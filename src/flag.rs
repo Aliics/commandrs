@@ -1,14 +1,14 @@
 use std::any::TypeId;
 
 #[derive(PartialEq, Debug)]
-pub struct Flag {
-    pub name: String,
+pub struct Flag <'a> {
+    pub name: &'a str,
     pub is_required: bool,
     pub type_id: TypeId,
 }
 
 #[derive(PartialEq, Debug)]
-pub struct FlagValue {
-    pub name: String,
+pub struct FlagValue<'a> {
+    pub name: &'a str,
     pub str_value: String,
 }
