@@ -1,0 +1,8 @@
+[package]
+name = "commander"
+version = "0.1.0"
+edition = "2021"
+authors = ["Aliics"]
+description = "Create robust command line tools in Rust"
+
+[dependencies]
