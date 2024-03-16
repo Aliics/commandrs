@@ -72,7 +72,7 @@ impl <'a> Program<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn should_add_values_for_given_args_when_parsed() {
         let name_value = Program::new()

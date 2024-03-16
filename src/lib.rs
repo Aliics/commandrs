@@ -1,6 +1,6 @@
 pub mod program;
 pub mod flag;
 pub mod error;
-mod program_parsing;
+pub mod parser;
 
 pub use program::Program;
