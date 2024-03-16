@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use std::any::TypeId;
 use std::collections::HashMap;
 
@@ -5,17 +6,32 @@ use crate::error::ProgramError;
 use crate::flag::{Flag, FlagValue};
 use crate::Program;
 
+const ARG_PREFIX: &str = "--";
+
+lazy_static! {
+    static ref BOOL_TYPE_ID: TypeId = TypeId::of::<bool>();
+}
+
 impl<'a> Program<'a> {
     pub fn parse_from_arr(mut self, arr: &[&str]) -> Result<Program<'a>, ProgramError<'a>> {
         let given_flag_args: HashMap<&str, Option<&str>> = arr
             .into_iter()
             .enumerate()
-            .filter(|(_, &a)| a.starts_with("--") || a.starts_with("-"))
+            .filter(|(_, &a)| is_in_arg_format(a))
             .map(|(i, &a)| {
-                (
-                    a.strip_prefix("--").or(a.strip_prefix("-")).unwrap_or(a),
-                    arr.get(i + 1).map(|&b| b),
-                )
+                let arg_name = a.strip_prefix(ARG_PREFIX).unwrap_or(a);
+                let requires_value = self
+                    .flags
+                    .iter()
+                    .find(|f| f.name == arg_name)
+                    .map(|f| f.type_id != *BOOL_TYPE_ID)
+                    .unwrap_or(false);
+
+                let arg_value = arr
+                    .get(i + 1)
+                    .map(|&b| b)
+                    .filter(|s| requires_value || !is_in_arg_format(s));
+                (arg_name, arg_value)
             })
             .collect();
 
@@ -32,7 +48,7 @@ impl<'a> Program<'a> {
                         name,
                         str_value: given_arg.to_string(),
                     }),
-                    Some(None) if type_id == TypeId::of::<bool>() => Ok(FlagValue {
+                    Some(_) if type_id == *BOOL_TYPE_ID => Ok(FlagValue {
                         name,
                         str_value: "true".to_string(),
                     }),
@@ -68,6 +84,10 @@ impl<'a> Program<'a> {
 
         Ok(self)
     }
+}
+
+fn is_in_arg_format(s: &str) -> bool {
+    s.starts_with(ARG_PREFIX)
 }
 
 #[cfg(test)]
@@ -118,11 +138,13 @@ mod tests {
 
     #[test]
     fn should_result_in_an_error_when_parsing_fails_for_type() {
-        let err = Program::new()
+        let program = Program::new()
             .with_required_flag::<u8>("age")
             .unwrap()
             .parse_from_arr(&["--age", "who?"])
-            .unwrap()
+            .unwrap();
+        
+        let err = program
             .get::<u8>("age")
             .unwrap_err();
 
@@ -146,5 +168,39 @@ mod tests {
             .unwrap();
 
         assert_eq!("Mr. Ollie", name_value);
+    }
+
+    #[test]
+    fn should_still_use_boolean_flag_even_when_value_is_not_explicitly_given() {
+        let program = Program::new()
+            .with_optional_flag::<bool>("is-wonderful", false)
+            .unwrap()
+            .with_required_flag::<&str>("name")
+            .unwrap()
+            .parse_from_arr(&["--is-wonderful", "--name", "Dr. Ollie"])
+            .unwrap();
+        
+        let is_wonderful = program.get::<bool>("is-wonderful").unwrap();
+        let name = program.get_string("name").unwrap();
+
+        assert!(is_wonderful);
+        assert_eq!("Dr. Ollie", name);
+    }
+
+    #[test]
+    fn should_still_use_boolean_flag_when_value_is_explicitly_given() {
+        let program = Program::new()
+            .with_required_flag::<bool>("is-great")
+            .unwrap()
+            .with_required_flag::<&str>("name")
+            .unwrap()
+            .parse_from_arr(&["--is-great", "true", "--name", "Dr. Ollie"])
+            .unwrap();
+
+        let is_great = program.get::<bool>("is-great").unwrap();
+        let name = program.get_string("name").unwrap();
+
+        assert!(is_great);
+        assert_eq!("Dr. Ollie", name);
     }
 }

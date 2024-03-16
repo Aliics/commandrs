@@ -55,7 +55,7 @@ impl<'a> Program<'a> {
         self.add_flag::<T>(name, true)
     }
 
-    pub fn get<T>(self, name: &str) -> Result<T, ProgramError>
+    pub fn get<T>(&self, name: &'a str) -> Result<T, ProgramError>
     where
         T: Display + FromStr + 'static,
     {
@@ -68,7 +68,7 @@ impl<'a> Program<'a> {
         }
     }
 
-    pub fn get_string(self, name: &str) -> Result<String, ProgramError> {
+    pub fn get_string(&self, name: &'a str) -> Result<String, ProgramError> {
         match self.flag_values.iter().find(|fv| fv.name == name) {
             Some(flag_value) => Ok(flag_value.str_value.to_string()),
             None => Err(ProgramError::NoSuchFlagExistsWithName { name }),

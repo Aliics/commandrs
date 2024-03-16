@@ -7,3 +7,4 @@ description = "Create robust command line tools in Rust"
 license = "MIT"
 
 [dependencies]
+lazy_static = "1.4.0"
