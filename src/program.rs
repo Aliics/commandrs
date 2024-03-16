@@ -102,6 +102,19 @@ impl<'a> Program<'a> {
         });
         Ok(self)
     }
+
+    /// Attempts to acquire the default value for a flag by name. The reason for the "unwrap" prefix 
+    /// is to indicate that this will call `unwrap` instead of handling `Option<FlagValue>` 
+    /// correctly. The assumption is made that the caller will only use this when a default flag can 
+    /// be used.
+    pub(crate) fn unwrap_default_flag_value(&self, name: &str) -> &String {
+        &self
+            .flag_defaults
+            .iter()
+            .find(|fv| fv.name == name)
+            .unwrap()
+            .str_value
+    }
 }
 
 #[cfg(test)]

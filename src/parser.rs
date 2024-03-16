@@ -59,18 +59,10 @@ impl<'a> Program<'a> {
                     Some(None) => Err(ProgramError::RequiredArgWasNotGiven { name }),
                     None if is_required => Err(ProgramError::RequiredArgWasNotGiven { name }),
                     None => {
-                        let FlagValue {
-                            str_value: default_value,
-                            ..
-                        } = self
-                            .flag_defaults
-                            .iter()
-                            .find(|fv| fv.name == name)
-                            .unwrap();
-
+                        let flag_value = self.unwrap_default_flag_value(name);
                         Ok(FlagValue {
                             name,
-                            str_value: default_value.to_string(),
+                            str_value: flag_value.to_string(),
                         })
                     }
                 },
@@ -82,15 +74,7 @@ impl<'a> Program<'a> {
         }
 
         if given_flag_args.contains_key(HELP_FLAG) {
-            println!("{}\n", self.desc);
-            self.flags.iter().for_each(|f| {
-                println!(
-                    "\t{} {}: {}",
-                    f.name,
-                    if f.is_required { "(required)" } else { "" },
-                    f.desc,
-                );
-            });
+            println!("{}", self.generate_help_text());
 
             return Err(HelpFlagGiven);
         }
