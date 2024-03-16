@@ -1,14 +1,13 @@
 use std::any::{type_name, TypeId};
 use std::fmt::Display;
 use std::str::FromStr;
-use std::string::ParseError;
 
 use crate::error::ProgramError;
 use crate::flag::{Flag, FlagValue};
 
 #[derive(PartialEq, Debug)]
 pub struct Program<'a> {
-    pub(crate) description: String,
+    pub(crate) description: &'a str,
     pub(crate) flags: Vec<Flag<'a>>,
     pub(crate) flag_defaults: Vec<FlagValue<'a>>,
     pub(crate) flag_values: Vec<FlagValue<'a>>,
@@ -17,7 +16,7 @@ pub struct Program<'a> {
 impl<'a> Default for Program<'a> {
     fn default() -> Program<'a> {
         Program {
-            description: String::default(),
+            description: "",
             flags: vec![],
             flag_defaults: vec![],
             flag_values: vec![],
@@ -32,7 +31,7 @@ impl<'a> Program<'a> {
     }
 
     pub fn with_description(mut self, desc: &'a str) -> Program {
-        self.description = desc.to_string();
+        self.description = desc;
         self
     }
 
@@ -55,16 +54,23 @@ impl<'a> Program<'a> {
     pub fn with_required_flag<T: 'static>(self, name: &'a str) -> Result<Program, ProgramError> {
         self.add_flag::<T>(name, true)
     }
-    
+
     pub fn get<T>(self, name: &str) -> Result<T, ProgramError>
     where
-        T: Display + FromStr<Err = ParseError> + 'static,
+        T: Display + FromStr + 'static,
     {
         match self.flag_values.iter().find(|fv| fv.name == name) {
             Some(flag_value) => flag_value.str_value.parse::<T>().map_err(|_| {
                 let type_name = type_name::<T>();
                 ProgramError::FailedToParseFlagValue { name, type_name }
             }),
+            None => Err(ProgramError::NoSuchFlagExistsWithName { name }),
+        }
+    }
+
+    pub fn get_string(self, name: &str) -> Result<String, ProgramError> {
+        match self.flag_values.iter().find(|fv| fv.name == name) {
+            Some(flag_value) => Ok(flag_value.str_value.to_string()),
             None => Err(ProgramError::NoSuchFlagExistsWithName { name }),
         }
     }
@@ -98,7 +104,7 @@ mod tests {
     #[test]
     fn should_add_description_when_using_with_description() {
         let expected = Program {
-            description: "A very cool test program".to_string(),
+            description: "A very cool test program",
             flags: vec![],
             flag_defaults: vec![],
             flag_values: vec![],
@@ -112,7 +118,7 @@ mod tests {
     #[test]
     fn should_add_optional_flags_when_calling_with_optional_flag_multiple_times() {
         let expected = Program {
-            description: String::default(),
+            description: "",
             flags: vec![
                 Flag {
                     name: "flag0",
@@ -150,7 +156,7 @@ mod tests {
     #[test]
     fn should_add_required_flags_when_calling_with_required_flag_multiple_times() {
         let expected = Program {
-            description: String::default(),
+            description: "",
             flags: vec![
                 Flag {
                     name: "flag0",
@@ -178,14 +184,15 @@ mod tests {
 
     #[test]
     fn should_not_be_able_to_add_flags_with_the_same_name() {
-        let expected = ProgramError::FlagAlreadyExistsWithName { name: "oh-noes" };
-
         let err = Program::new()
             .with_required_flag::<bool>("oh-noes")
             .unwrap()
             .with_required_flag::<&str>("oh-noes")
             .unwrap_err();
 
-        assert_eq!(expected, err);
+        assert_eq!(
+            ProgramError::FlagAlreadyExistsWithName { name: "oh-noes" },
+            err
+        );
     }
 }
