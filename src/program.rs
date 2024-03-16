@@ -7,7 +7,7 @@ use crate::flag::{Flag, FlagValue};
 
 #[derive(PartialEq, Debug)]
 pub struct Program<'a> {
-    pub(crate) description: &'a str,
+    pub(crate) desc: &'a str,
     pub(crate) flags: Vec<Flag<'a>>,
     pub(crate) flag_defaults: Vec<FlagValue<'a>>,
     pub(crate) flag_values: Vec<FlagValue<'a>>,
@@ -16,7 +16,7 @@ pub struct Program<'a> {
 impl<'a> Default for Program<'a> {
     fn default() -> Program<'a> {
         Program {
-            description: "",
+            desc: "",
             flags: vec![],
             flag_defaults: vec![],
             flag_values: vec![],
@@ -31,7 +31,7 @@ impl<'a> Program<'a> {
     }
 
     pub fn with_description(mut self, desc: &'a str) -> Program {
-        self.description = desc;
+        self.desc = desc;
         self
     }
 
@@ -39,11 +39,12 @@ impl<'a> Program<'a> {
         mut self,
         name: &'a str,
         default: T,
-    ) -> Result<Program, ProgramError>
+        desc: &'a str,
+    ) -> Result<Program<'a>, ProgramError<'a>>
     where
         T: Display + 'static,
     {
-        self = self.add_flag::<T>(name, false)?;
+        self = self.add_flag::<T>(name, desc, false)?;
         self.flag_defaults.push(FlagValue {
             name,
             str_value: default.to_string(),
@@ -51,8 +52,12 @@ impl<'a> Program<'a> {
         Ok(self)
     }
 
-    pub fn with_required_flag<T: 'static>(self, name: &'a str) -> Result<Program, ProgramError> {
-        self.add_flag::<T>(name, true)
+    pub fn with_required_flag<T: 'static>(
+        self,
+        name: &'a str,
+        desc: &'a str,
+    ) -> Result<Program<'a>, ProgramError<'a>> {
+        self.add_flag::<T>(name, desc, true)
     }
 
     pub fn get<T>(&self, name: &'a str) -> Result<T, ProgramError>
@@ -78,8 +83,9 @@ impl<'a> Program<'a> {
     fn add_flag<T: 'static>(
         mut self,
         name: &'a str,
+        desc: &'a str,
         is_required: bool,
-    ) -> Result<Program, ProgramError> {
+    ) -> Result<Program<'a>, ProgramError<'a>> {
         let already_has_flag_with_name = self.flags.iter().any(|f| f.name == name);
         if already_has_flag_with_name {
             // Flag names cannot be duplicate, if they are then there would be no way to parse the
@@ -90,6 +96,7 @@ impl<'a> Program<'a> {
         let type_id = TypeId::of::<T>();
         self.flags.push(Flag {
             name,
+            desc,
             type_id,
             is_required,
         });
@@ -104,7 +111,7 @@ mod tests {
     #[test]
     fn should_add_description_when_using_with_description() {
         let expected = Program {
-            description: "A very cool test program",
+            desc: "A very cool test program",
             flags: vec![],
             flag_defaults: vec![],
             flag_values: vec![],
@@ -118,15 +125,17 @@ mod tests {
     #[test]
     fn should_add_optional_flags_when_calling_with_optional_flag_multiple_times() {
         let expected = Program {
-            description: "",
+            desc: "",
             flags: vec![
                 Flag {
                     name: "flag0",
+                    desc: "Zero-th flag",
                     type_id: TypeId::of::<bool>(),
                     is_required: false,
                 },
                 Flag {
                     name: "flag1",
+                    desc: "First flag",
                     type_id: TypeId::of::<&str>(),
                     is_required: false,
                 },
@@ -145,9 +154,9 @@ mod tests {
         };
 
         let program = Program::new()
-            .with_optional_flag("flag0", false)
+            .with_optional_flag("flag0", false, "Zero-th flag")
             .unwrap()
-            .with_optional_flag("flag1", "lol")
+            .with_optional_flag("flag1", "lol", "First flag")
             .unwrap();
 
         assert_eq!(expected, program);
@@ -156,15 +165,17 @@ mod tests {
     #[test]
     fn should_add_required_flags_when_calling_with_required_flag_multiple_times() {
         let expected = Program {
-            description: "",
+            desc: "",
             flags: vec![
                 Flag {
                     name: "flag0",
+                    desc: "Zero-th flag",
                     type_id: TypeId::of::<bool>(),
                     is_required: true,
                 },
                 Flag {
                     name: "flag1",
+                    desc: "First flag",
                     type_id: TypeId::of::<&str>(),
                     is_required: true,
                 },
@@ -174,9 +185,9 @@ mod tests {
         };
 
         let program = Program::new()
-            .with_required_flag::<bool>("flag0")
+            .with_required_flag::<bool>("flag0", "Zero-th flag")
             .unwrap()
-            .with_required_flag::<&str>("flag1")
+            .with_required_flag::<&str>("flag1", "First flag")
             .unwrap();
 
         assert_eq!(expected, program);
@@ -185,9 +196,9 @@ mod tests {
     #[test]
     fn should_not_be_able_to_add_flags_with_the_same_name() {
         let err = Program::new()
-            .with_required_flag::<bool>("oh-noes")
+            .with_required_flag::<bool>("oh-noes", "Ruh roh")
             .unwrap()
-            .with_required_flag::<&str>("oh-noes")
+            .with_required_flag::<&str>("oh-noes", "Ruh roh")
             .unwrap_err();
 
         assert_eq!(
