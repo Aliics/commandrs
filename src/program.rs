@@ -30,11 +30,16 @@ impl<'a> Program<'a> {
         Program::default()
     }
 
+    /// Add a description to the `Program`. This will be displayed by the help text.
     pub fn with_description(mut self, desc: &'a str) -> Program {
         self.desc = desc;
         self
     }
 
+    /// Add an optional flag to the `Program`. These do not have to be provided, but require a
+    /// default value in the case of no value being provided.
+    ///
+    /// The name must be unique.
     pub fn with_optional_flag<T>(
         mut self,
         name: &'a str,
@@ -52,6 +57,10 @@ impl<'a> Program<'a> {
         Ok(self)
     }
 
+    /// Add a required flag to the `Program`. These must be provided when parsing the command line
+    /// arguments.
+    ///
+    /// The name must be unique.
     pub fn with_required_flag<T: 'static>(
         self,
         name: &'a str,
@@ -60,6 +69,8 @@ impl<'a> Program<'a> {
         self.add_flag::<T>(name, desc, true)
     }
 
+    /// Extract the parsed value by its unique name. This can fail if the argument passed cannot be
+    /// parsed as a type of `T` or not registered. 
     pub fn get<T>(&self, name: &'a str) -> Result<T, ProgramError>
     where
         T: Display + FromStr + 'static,
@@ -78,6 +89,8 @@ impl<'a> Program<'a> {
         }
     }
 
+    /// A wrapper for `Program::get`, but this does not need to be converted as command line 
+    /// arguments are already Strings.
     pub fn get_string(&self, name: &'a str) -> Result<String, ProgramError> {
         match self.flag_values.iter().find(|fv| fv.name == name) {
             Some(flag_value) => Ok(flag_value.str_value.to_string()),
@@ -85,10 +98,6 @@ impl<'a> Program<'a> {
                 name: name.to_string(),
             }),
         }
-    }
-
-    pub fn get_bool(&self, name: &'a str) -> Result<bool, ProgramError> {
-        self.get::<bool>(name)
     }
 
     fn add_flag<T: 'static>(

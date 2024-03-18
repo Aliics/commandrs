@@ -18,16 +18,24 @@ lazy_static! {
 }
 
 impl<'a> Program<'a> {
+    /// Parse command line arguments and store their values against the flags configured on 
+    /// `Program`. These values are stored in their string representation until later fetched.
     pub fn parse(self) -> Result<Program<'a>, ProgramError> {
         self.parse_from_strings(env::args().collect())
     }
 
+    /// Just wraps `Program::parse_from_strings`, but instead accepts a `&[&str]`.
     pub fn parse_from_str_arr(self, arr: &[&str]) -> Result<Program<'a>, ProgramError> {
         self.parse_from_strings(arr.iter().map(|s| s.to_string()).collect())
     }
 
-    pub fn parse_from_strings(mut self, arr: Vec<String>) -> Result<Program<'a>, ProgramError> {
-        let given_flag_args: HashMap<&str, Option<&String>> = arr
+    /// Parse the given `args` parameters and store their values against the flags configured on 
+    /// `Program`. These values are stored in their string representation until later fetched.
+    /// 
+    /// Generally, this function will not be used, and instead you will want the `Program::parse`
+    /// function for most programs.
+    pub fn parse_from_strings(mut self, args: Vec<String>) -> Result<Program<'a>, ProgramError> {
+        let given_flag_args: HashMap<&str, Option<&String>> = args
             .iter()
             .enumerate()
             .filter(|(_, a)| is_in_arg_format(a))
@@ -40,7 +48,7 @@ impl<'a> Program<'a> {
                     .map(|f| f.type_id != *BOOL_TYPE_ID)
                     .unwrap_or(false);
 
-                let arg_value = arr
+                let arg_value = args
                     .get(i + 1)
                     .map(|b| b)
                     .filter(|s| requires_value || !is_in_arg_format(s));
