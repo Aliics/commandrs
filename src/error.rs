@@ -3,16 +3,16 @@ use std::fmt::{Display, Formatter};
 
 use crate::error::ProgramError::*;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum ProgramError<'a> {
-    FlagAlreadyExistsWithName { name: &'a str },
-    NoSuchFlagExistsWithName { name: &'a str },
-    FailedToParseFlagValue { name: &'a str, type_name: &'a str },
-    RequiredArgWasNotGiven { name: &'a str },
+#[derive(Debug, PartialEq, Clone)]
+pub enum ProgramError {
+    FlagAlreadyExistsWithName { name: String },
+    NoSuchFlagExistsWithName { name: String },
+    FailedToParseFlagValue { name: String, type_name: String },
+    RequiredArgWasNotGiven { name: String },
     HelpFlagGiven,
 }
 
-impl Display for ProgramError<'_> {
+impl Display for ProgramError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             FlagAlreadyExistsWithName { name } => {
@@ -34,4 +34,4 @@ impl Display for ProgramError<'_> {
     }
 }
 
-impl Error for ProgramError<'_> {}
+impl Error for ProgramError {}

@@ -1,5 +1,7 @@
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::env;
+use std::string::ToString;
 
 use lazy_static::lazy_static;
 
@@ -16,12 +18,20 @@ lazy_static! {
 }
 
 impl<'a> Program<'a> {
-    pub fn parse_from_arr(mut self, arr: &[&str]) -> Result<Program<'a>, ProgramError<'a>> {
-        let given_flag_args: HashMap<&str, Option<&str>> = arr
-            .into_iter()
+    pub fn parse(self) -> Result<Program<'a>, ProgramError> {
+        self.parse_from_strings(env::args().collect())
+    }
+
+    pub fn parse_from_str_arr(self, arr: &[&str]) -> Result<Program<'a>, ProgramError> {
+        self.parse_from_strings(arr.iter().map(|s| s.to_string()).collect())
+    }
+
+    pub fn parse_from_strings(mut self, arr: Vec<String>) -> Result<Program<'a>, ProgramError> {
+        let given_flag_args: HashMap<&str, Option<&String>> = arr
+            .iter()
             .enumerate()
-            .filter(|(_, &a)| is_in_arg_format(a))
-            .map(|(i, &a)| {
+            .filter(|(_, a)| is_in_arg_format(a))
+            .map(|(i, a)| {
                 let arg_name = a.strip_prefix(ARG_PREFIX).unwrap_or(a);
                 let requires_value = self
                     .flags
@@ -32,7 +42,7 @@ impl<'a> Program<'a> {
 
                 let arg_value = arr
                     .get(i + 1)
-                    .map(|&b| b)
+                    .map(|b| b)
                     .filter(|s| requires_value || !is_in_arg_format(s));
                 (arg_name, arg_value)
             })
@@ -54,10 +64,14 @@ impl<'a> Program<'a> {
                     }),
                     Some(_) if type_id == *BOOL_TYPE_ID => Ok(FlagValue {
                         name,
-                        str_value: "true".to_string(),
+                        str_value: true.to_string(),
                     }),
-                    Some(None) => Err(ProgramError::RequiredArgWasNotGiven { name }),
-                    None if is_required => Err(ProgramError::RequiredArgWasNotGiven { name }),
+                    Some(None) => Err(ProgramError::RequiredArgWasNotGiven {
+                        name: name.to_string(),
+                    }),
+                    None if is_required => Err(ProgramError::RequiredArgWasNotGiven {
+                        name: name.to_string(),
+                    }),
                     None => {
                         let flag_value = self.unwrap_default_flag_value(name);
                         Ok(FlagValue {
@@ -70,7 +84,7 @@ impl<'a> Program<'a> {
             .collect();
 
         if let Some(Err(err)) = flag_value_mutations.iter().find(|r| r.is_err()) {
-            return Err(*err);
+            return Err(err.clone());
         }
 
         if given_flag_args.contains_key(HELP_FLAG) {
@@ -101,7 +115,7 @@ mod tests {
         let name_value = Program::new()
             .with_required_flag::<&str>("name", "Your name")
             .unwrap()
-            .parse_from_arr(&["--name", "Ollie"])
+            .parse_from_str_arr(&["--name", "Ollie"])
             .unwrap()
             .get_string("name")
             .unwrap();
@@ -114,7 +128,7 @@ mod tests {
         let name_value = Program::new()
             .with_required_flag::<usize>("cranberries", "Number of cranberries")
             .unwrap()
-            .parse_from_arr(&["--cranberries", "314159265358979"])
+            .parse_from_str_arr(&["--cranberries", "314159265358979"])
             .unwrap()
             .get::<usize>("cranberries")
             .unwrap();
@@ -127,12 +141,12 @@ mod tests {
         let err = Program::new()
             .with_required_flag::<&str>("required-flag", "A required flag, wow")
             .unwrap()
-            .parse_from_arr(&[])
+            .parse_from_str_arr(&[])
             .unwrap_err();
 
         assert_eq!(
             ProgramError::RequiredArgWasNotGiven {
-                name: "required-flag"
+                name: "required-flag".to_string()
             },
             err
         );
@@ -143,15 +157,15 @@ mod tests {
         let program = Program::new()
             .with_required_flag::<u8>("age", "Your age")
             .unwrap()
-            .parse_from_arr(&["--age", "who?"])
+            .parse_from_str_arr(&["--age", "who?"])
             .unwrap();
 
         let err = program.get::<u8>("age").unwrap_err();
 
         assert_eq!(
             ProgramError::FailedToParseFlagValue {
-                name: "age",
-                type_name: "u8"
+                name: "age".to_string(),
+                type_name: "u8".to_string()
             },
             err
         );
@@ -162,7 +176,7 @@ mod tests {
         let name_value = Program::new()
             .with_optional_flag::<&str>("name", "Mr. Ollie", "Your name")
             .unwrap()
-            .parse_from_arr(&["--something", "else"])
+            .parse_from_str_arr(&["--something", "else"])
             .unwrap()
             .get_string("name")
             .unwrap();
@@ -177,7 +191,7 @@ mod tests {
             .unwrap()
             .with_required_flag::<&str>("name", "Your name")
             .unwrap()
-            .parse_from_arr(&["--is-wonderful", "--name", "Dr. Ollie"])
+            .parse_from_str_arr(&["--is-wonderful", "--name", "Dr. Ollie"])
             .unwrap();
 
         let is_wonderful = program.get::<bool>("is-wonderful").unwrap();
@@ -194,7 +208,7 @@ mod tests {
             .unwrap()
             .with_required_flag::<&str>("name", "Your name")
             .unwrap()
-            .parse_from_arr(&["--is-great", "true", "--name", "Dr. Ollie"])
+            .parse_from_str_arr(&["--is-great", "true", "--name", "Dr. Ollie"])
             .unwrap();
 
         let is_great = program.get::<bool>("is-great").unwrap();

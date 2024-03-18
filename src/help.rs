@@ -14,7 +14,7 @@ impl Program<'_> {
                         let default_value = self.unwrap_default_flag_value(f.name);
                         format!("(default: {})", default_value)
                     };
-                    
+
                     format!("\t--{} {}: {}", f.name, additional_info, f.desc)
                 })
                 .reduce(|acc, s| format!("{}\n{}", acc, s))

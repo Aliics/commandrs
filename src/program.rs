@@ -40,7 +40,7 @@ impl<'a> Program<'a> {
         name: &'a str,
         default: T,
         desc: &'a str,
-    ) -> Result<Program<'a>, ProgramError<'a>>
+    ) -> Result<Program<'a>, ProgramError>
     where
         T: Display + 'static,
     {
@@ -56,7 +56,7 @@ impl<'a> Program<'a> {
         self,
         name: &'a str,
         desc: &'a str,
-    ) -> Result<Program<'a>, ProgramError<'a>> {
+    ) -> Result<Program<'a>, ProgramError> {
         self.add_flag::<T>(name, desc, true)
     }
 
@@ -66,18 +66,29 @@ impl<'a> Program<'a> {
     {
         match self.flag_values.iter().find(|fv| fv.name == name) {
             Some(flag_value) => flag_value.str_value.parse::<T>().map_err(|_| {
-                let type_name = type_name::<T>();
-                ProgramError::FailedToParseFlagValue { name, type_name }
+                let type_name = type_name::<T>().to_string();
+                ProgramError::FailedToParseFlagValue {
+                    name: name.to_string(),
+                    type_name,
+                }
             }),
-            None => Err(ProgramError::NoSuchFlagExistsWithName { name }),
+            None => Err(ProgramError::NoSuchFlagExistsWithName {
+                name: name.to_string(),
+            }),
         }
     }
 
     pub fn get_string(&self, name: &'a str) -> Result<String, ProgramError> {
         match self.flag_values.iter().find(|fv| fv.name == name) {
             Some(flag_value) => Ok(flag_value.str_value.to_string()),
-            None => Err(ProgramError::NoSuchFlagExistsWithName { name }),
+            None => Err(ProgramError::NoSuchFlagExistsWithName {
+                name: name.to_string(),
+            }),
         }
+    }
+
+    pub fn get_bool(&self, name: &'a str) -> Result<bool, ProgramError> {
+        self.get::<bool>(name)
     }
 
     fn add_flag<T: 'static>(
@@ -85,12 +96,14 @@ impl<'a> Program<'a> {
         name: &'a str,
         desc: &'a str,
         is_required: bool,
-    ) -> Result<Program<'a>, ProgramError<'a>> {
+    ) -> Result<Program<'a>, ProgramError> {
         let already_has_flag_with_name = self.flags.iter().any(|f| f.name == name);
         if already_has_flag_with_name {
             // Flag names cannot be duplicate, if they are then there would be no way to parse the
             // arguments on the command line and understand which flag we want.
-            return Err(ProgramError::FlagAlreadyExistsWithName { name });
+            return Err(ProgramError::FlagAlreadyExistsWithName {
+                name: name.to_string(),
+            });
         }
 
         let type_id = TypeId::of::<T>();
@@ -103,9 +116,9 @@ impl<'a> Program<'a> {
         Ok(self)
     }
 
-    /// Attempts to acquire the default value for a flag by name. The reason for the "unwrap" prefix 
-    /// is to indicate that this will call `unwrap` instead of handling `Option<FlagValue>` 
-    /// correctly. The assumption is made that the caller will only use this when a default flag can 
+    /// Attempts to acquire the default value for a flag by name. The reason for the "unwrap" prefix
+    /// is to indicate that this will call `unwrap` instead of handling `Option<FlagValue>`
+    /// correctly. The assumption is made that the caller will only use this when a default flag can
     /// be used.
     pub(crate) fn unwrap_default_flag_value(&self, name: &str) -> &String {
         &self
@@ -215,7 +228,9 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(
-            ProgramError::FlagAlreadyExistsWithName { name: "oh-noes" },
+            ProgramError::FlagAlreadyExistsWithName {
+                name: "oh-noes".to_string()
+            },
             err
         );
     }
