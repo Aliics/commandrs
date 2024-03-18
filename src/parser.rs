@@ -18,7 +18,7 @@ lazy_static! {
 }
 
 impl<'a> Program<'a> {
-    /// Parse command line arguments and store their values against the flags configured on 
+    /// Parse command line arguments and store their values against the flags configured on
     /// `Program`. These values are stored in their string representation until later fetched.
     pub fn parse(self) -> Result<Program<'a>, ProgramError> {
         self.parse_from_strings(env::args().collect())
@@ -29,9 +29,9 @@ impl<'a> Program<'a> {
         self.parse_from_strings(arr.iter().map(|s| s.to_string()).collect())
     }
 
-    /// Parse the given `args` parameters and store their values against the flags configured on 
+    /// Parse the given `args` parameters and store their values against the flags configured on
     /// `Program`. These values are stored in their string representation until later fetched.
-    /// 
+    ///
     /// Generally, this function will not be used, and instead you will want the `Program::parse`
     /// function for most programs.
     pub fn parse_from_strings(mut self, args: Vec<String>) -> Result<Program<'a>, ProgramError> {

@@ -70,7 +70,7 @@ impl<'a> Program<'a> {
     }
 
     /// Extract the parsed value by its unique name. This can fail if the argument passed cannot be
-    /// parsed as a type of `T` or not registered. 
+    /// parsed as a type of `T` or not registered.
     pub fn get<T>(&self, name: &'a str) -> Result<T, ProgramError>
     where
         T: Display + FromStr + 'static,
@@ -89,7 +89,7 @@ impl<'a> Program<'a> {
         }
     }
 
-    /// A wrapper for `Program::get`, but this does not need to be converted as command line 
+    /// A wrapper for `Program::get`, but this does not need to be converted as command line
     /// arguments are already Strings.
     pub fn get_string(&self, name: &'a str) -> Result<String, ProgramError> {
         match self.flag_values.iter().find(|fv| fv.name == name) {
